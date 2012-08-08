@@ -4,18 +4,27 @@ FullScreen fs;
 JMyron cam;
 PImage capture;
 
-int displayCount = 0;
 int saveCount = 0;
 int time = 0;
 
-int camWidth = 640;
-int camHeight = 480;
+int camWidth = 
+  640;
+  //720;
+int camHeight = 
+  480;
+  //576;
 
-long lastCapture = 0;
+long lastCapture = millis();
 boolean capturing = false;
 
+FilenameFilter jpgFilter = new FilenameFilter() {
+  boolean accept(File dir, String name) {
+    return name.toLowerCase().endsWith(".jpg");
+  }
+};
+
 void setup() {
-  frameRate(1);
+  //frameRate(1);
   smooth();
   //size(screen.width, screen.height);
   size(800, 600);
@@ -35,7 +44,7 @@ void setup() {
   fs = new FullScreen(this);
   //fs.enter();
   textFont(loadFont("Silom-48.vlw"), 18);
-  thread("capture");
+  thread("prepare_capture");
 }
 boolean sketchFullScreen() {
   return true;
@@ -44,49 +53,62 @@ public void stop() {
   cam.stop();
   super.stop();
 }
+long lastDraw = millis();
+String lastDisplayedImage = "";
+File displayImage;
+
 void draw() {
-  
-  if (time%2 == 0) {
-    //
-      //get("capture" + iCount + ".jpg");
-      displayCount++;
-    //}
-  } else return;
+  thread("capture");
+  long drawTime = millis();
+  if (drawTime < lastDraw) lastDraw = drawTime;
+  if (drawTime < lastDraw + 40) return;
+  lastDraw = drawTime;
   time++;
   if (saveCount <= 0) return;
-  if (displayCount >= saveCount) displayCount = 0;
-  File imageFile = new File ("capture" + nf(displayCount, 4)+ ".jpg");
-  if (null != imageFile) 
-    println(imageFile.getAbsolutePath());
-  image(loadImage("capture" + nf(displayCount, 4)+ ".jpg"), 0, 0, width, height); 
-  String imageCaption = "Image " + displayCount;
+  File[] files = new File(sketchPath).listFiles(jpgFilter);
+  if (files.length <= 0) return;
+  int imageIterator;
+  lastDisplayedImage = (null != displayImage) ? displayImage.getName() : "";
+  for (imageIterator = 0; imageIterator < files.length; imageIterator++) {
+    if (files[imageIterator].getName().compareTo(lastDisplayedImage) > 0) {
+      lastDisplayedImage = files[imageIterator].getName();      
+      break;
+    }
+  }
+  if (files.length <= imageIterator) imageIterator = 0;
+  displayImage = files[imageIterator];
+  if (null != displayImage) { 
+    image(loadImage(displayImage.getAbsolutePath()), 0, 0, width, height); 
+    String imageCaption = "Image " + imageIterator;
 
-  String imageTime = new java.text.SimpleDateFormat("yyyyMMdd").format(imageFile.lastModified());
-  //imageTime = new Date(imageFile.lastModified()).toString();
-  text(imageCaption, 30, height - 38);
-  text(imageTime, width - (textWidth(imageTime) + 30), height - 38);
+    String imageTime = new java.text.SimpleDateFormat("yyyyMMdd").format(displayImage.lastModified());
+    imageTime = new Date(displayImage.lastModified()).toString();
+    text(imageCaption, 30, height - 38);
+    text(imageTime, width - (textWidth(imageTime) + 30), height - 38);
+    //text(new Date(diplayImage.lastModified()).toString(), 60, 60);
+  }
+  //updatePixels();
+
 }
 
-void capture() {
+void prepare_capture() {
   capturing = true;
   File dir = new File(sketchPath);
   if (dir.isDirectory()) {
-    String[] fileNames = dir.list();
-    for (int i = 0; i < fileNames.length; i++) {
-      if (fileNames[i].endsWith(".jpg")) {
-        saveCount++;
-      }
-    }
-    println(fileNames);
+    String[] fileNames = dir.list(jpgFilter);
+    saveCount = fileNames.length;
   }
   println(saveCount);
-  while(capturing && true) {
+}
+void capture() {
+  //while(capturing && true) {
     long roundTime = millis();
     if (roundTime < lastCapture) lastCapture = roundTime;
-    if (roundTime < lastCapture + 5000) continue;
+    if (roundTime < lastCapture + 3000) return;//continue;
     lastCapture = roundTime;
     cam.update();
     cam.imageCopy(capture.pixels);
-    capture.save("capture" + nf((saveCount++), 4) + ".jpg");
-  }
+    capture.save("capture" + nf((saveCount), 5) + ".jpg");
+    saveCount++;
+  //}
 }
