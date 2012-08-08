@@ -45,13 +45,14 @@ public void stop() {
   super.stop();
 }
 void draw() {
-  time++;
-  //if (time%5 == 0) {
+  
+  if (time%2 == 0) {
     //
       //get("capture" + iCount + ".jpg");
       displayCount++;
     //}
-  //} else return;
+  } else return;
+  time++;
   if (saveCount <= 0) return;
   if (displayCount >= saveCount) displayCount = 0;
   File imageFile = new File ("capture" + nf(displayCount, 4)+ ".jpg");
@@ -82,7 +83,7 @@ void capture() {
   while(capturing && true) {
     long roundTime = millis();
     if (roundTime < lastCapture) lastCapture = roundTime;
-    if (roundTime < lastCapture + 2000) continue;
+    if (roundTime < lastCapture + 5000) continue;
     lastCapture = roundTime;
     cam.update();
     cam.imageCopy(capture.pixels);
