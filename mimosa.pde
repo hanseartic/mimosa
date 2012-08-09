@@ -1,11 +1,13 @@
+import processing.serial.*;
 import JMyron.*;
 import fullscreen.*;
 FullScreen fs;
 JMyron cam;
 PImage capture;
 
-int saveCount = 0;
-int time = 0;
+Serial arduino;
+
+float displayTime = 1.3;
 
 int camWidth = 
   640;
@@ -13,6 +15,9 @@ int camWidth =
 int camHeight = 
   480;
   //576;
+  
+int saveCount = 0;
+int time = 0;
 
 long lastCapture = millis();
 boolean capturing = false;
@@ -28,9 +33,7 @@ void setup() {
   smooth();
   //size(screen.width, screen.height);
   size(800, 600);
-  if (frame != null) {
-    frame.setResizable(true);
-  }
+
   
   cam = new JMyron();
   cam.start(camWidth, camHeight);
@@ -45,23 +48,24 @@ void setup() {
   //fs.enter();
   textFont(loadFont("Silom-48.vlw"), 18);
   thread("prepare_capture");
-}
-boolean sketchFullScreen() {
-  return true;
+  println(Serial.list());
+  arduino = new Serial(this, Serial.list()[0], 9600);
 }
 public void stop() {
   cam.stop();
   super.stop();
+  arduino.stop();
 }
 long lastDraw = millis();
 String lastDisplayedImage = "";
 File displayImage;
 
 void draw() {
+  cam.update();
   thread("capture");
   long drawTime = millis();
   if (drawTime < lastDraw) lastDraw = drawTime;
-  if (drawTime < lastDraw + 40) return;
+  if (drawTime < lastDraw + 1000 * displayTime) return;
   lastDraw = drawTime;
   time++;
   if (saveCount <= 0) return;
@@ -69,7 +73,13 @@ void draw() {
   if (files.length <= 0) return;
   int imageIterator;
   lastDisplayedImage = (null != displayImage) ? displayImage.getName() : "";
-  for (imageIterator = 0; imageIterator < files.length; imageIterator++) {
+  int maxImage = files.length;
+  if (imageTaken) {
+    maxImage--;
+    imageTaken = false;
+    println("Skipping last image");
+  }
+  for (imageIterator = 0; imageIterator < maxImage; imageIterator++) {
     if (files[imageIterator].getName().compareTo(lastDisplayedImage) > 0) {
       lastDisplayedImage = files[imageIterator].getName();      
       break;
@@ -100,15 +110,35 @@ void prepare_capture() {
   }
   println(saveCount);
 }
+String serialIn = "";
+boolean imageTaken = false;
 void capture() {
-  //while(capturing && true) {
+  boolean releaseShutter = false;
+  while(arduino.available() > 0) {
+    char in = char(arduino.read());
+    if (in == '\n') {
+      println(serialIn);
+      if (serialIn.indexOf("shutter") >= 0) {
+        releaseShutter = true;
+      }
+      serialIn = "";
+    } else {
+      serialIn += in;
+    }
+  }
+  if (! releaseShutter) return;
+  println("RELEASING SHUTTER");
+  arduino.write("OK\n");
     long roundTime = millis();
     if (roundTime < lastCapture) lastCapture = roundTime;
     if (roundTime < lastCapture + 3000) return;//continue;
     lastCapture = roundTime;
     cam.update();
     cam.imageCopy(capture.pixels);
+    capture.updatePixels();
+    imageTaken = true;
     capture.save("capture" + nf((saveCount), 5) + ".jpg");
+    delay(200);
     saveCount++;
-  //}
 }
+
