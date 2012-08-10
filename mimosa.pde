@@ -1,13 +1,12 @@
 import processing.serial.*;
 import JMyron.*;
-import fullscreen.*;
 FullScreen fs;
 JMyron cam;
 PImage capture;
 
 Serial arduino;
 
-float displayTime = 1.3;
+float displayTime = 2;
 
 int camWidth = 
   640;
@@ -44,9 +43,7 @@ void setup() {
   
   loadPixels();
   
-  fs = new FullScreen(this);
-  //fs.enter();
-  textFont(loadFont("Silom-48.vlw"), 18);
+  textFont(loadFont("Silom-48.vlw"), 19);
   thread("prepare_capture");
   println(Serial.list());
   arduino = new Serial(this, Serial.list()[0], 9600);
@@ -59,7 +56,7 @@ public void stop() {
 long lastDraw = millis();
 String lastDisplayedImage = "";
 File displayImage;
-
+long firstImageTaken = 0; 
 void draw() {
   cam.update();
   thread("capture");
@@ -69,9 +66,12 @@ void draw() {
   lastDraw = drawTime;
   time++;
   if (saveCount <= 0) return;
-  File[] files = new File(sketchPath).listFiles(jpgFilter);
+  File[] files = new File(sketchPath("data")).listFiles(jpgFilter);
   if (files.length <= 0) return;
   int imageIterator;
+  if (0 == firstImageTaken) {
+    firstImageTaken = files[0].lastModified();
+  }
   lastDisplayedImage = (null != displayImage) ? displayImage.getName() : "";
   int maxImage = files.length;
   if (imageTaken) {
@@ -88,17 +88,16 @@ void draw() {
   if (files.length <= imageIterator) imageIterator = 0;
   displayImage = files[imageIterator];
   if (null != displayImage) { 
-    image(loadImage(displayImage.getAbsolutePath()), 0, 0, width, height); 
-    String imageCaption = "Image " + imageIterator;
-
-    String imageTime = new java.text.SimpleDateFormat("yyyyMMdd").format(displayImage.lastModified());
-    imageTime = new Date(displayImage.lastModified()).toString();
+    image(loadImage(displayImage.getAbsolutePath()), 0, 0, width, height);
+    long imageDate = displayImage.lastModified();
+    
+    String imageFromDay = new Integer((int)(imageDate - firstImageTaken) / (1000 * 60 * 60 * 24) + 1).toString();
+    String imageCaption = "Image " + imageIterator + "/" + files.length + " Day " + imageFromDay.toString();
+    String imageTime = new java.text.SimpleDateFormat("EEE MM dd HH:mm:ss z yyyy").format(imageDate);
+    //imageTime = new Date(displayImage.lastModified()).toString();
     text(imageCaption, 30, height - 38);
     text(imageTime, width - (textWidth(imageTime) + 30), height - 38);
-    //text(new Date(diplayImage.lastModified()).toString(), 60, 60);
   }
-  //updatePixels();
-
 }
 
 void prepare_capture() {
@@ -128,17 +127,19 @@ void capture() {
   }
   if (! releaseShutter) return;
   println("RELEASING SHUTTER");
+  
+  long roundTime = millis();
+  if (roundTime < lastCapture) lastCapture = roundTime;
+  if (roundTime < lastCapture + 3000) return;
+  lastCapture = roundTime;
+  cam.update();
+  delay(500);
+  cam.imageCopy(capture.pixels);
+  capture.updatePixels();
+  imageTaken = true;
+  capture.save(sketchPath("data/capture" + nf((saveCount), 5) + ".jpg"));
+  delay(200);
+  saveCount++;
   arduino.write("OK\n");
-    long roundTime = millis();
-    if (roundTime < lastCapture) lastCapture = roundTime;
-    if (roundTime < lastCapture + 3000) return;//continue;
-    lastCapture = roundTime;
-    cam.update();
-    cam.imageCopy(capture.pixels);
-    capture.updatePixels();
-    imageTaken = true;
-    capture.save("capture" + nf((saveCount), 5) + ".jpg");
-    delay(200);
-    saveCount++;
 }
 
