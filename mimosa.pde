@@ -53,6 +53,15 @@ public void stop() {
   super.stop();
   arduino.stop();
 }
+Date getDayOnlyDate(Date date) {
+  Calendar cal = Calendar.getInstance();
+  cal.setTime(date);
+  cal.set(Calendar.HOUR_OF_DAY, 0);
+  cal.set(Calendar.MINUTE, 0);
+  cal.set(Calendar.SECOND, 0);
+  cal.set(Calendar.MILLISECOND, 0);  
+  return cal.getTime();
+}
 long lastDraw = millis();
 String lastDisplayedImage = "";
 File displayImage;
@@ -70,7 +79,7 @@ void draw() {
   if (files.length <= 0) return;
   int imageIterator;
   if (0 == firstImageTaken) {
-    firstImageTaken = files[0].lastModified();
+    firstImageTaken = getDayOnlyDate(new Date(files[0].lastModified())).getTime();
   }
   lastDisplayedImage = (null != displayImage) ? displayImage.getName() : "";
   int maxImage = files.length;
@@ -90,10 +99,10 @@ void draw() {
   if (null != displayImage) { 
     image(loadImage(displayImage.getAbsolutePath()), 0, 0, width, height);
     long imageDate = displayImage.lastModified();
-    
+    String imageTime = new java.text.SimpleDateFormat("EEE MM dd HH:mm:ss z yyyy").format(imageDate);
+    imageDate = getDayOnlyDate(new Date(imageDate)).getTime();
     String imageFromDay = new Integer((int)(imageDate - firstImageTaken) / (1000 * 60 * 60 * 24) + 1).toString();
     String imageCaption = "Image " + imageIterator + "/" + files.length + " Day " + imageFromDay.toString();
-    String imageTime = new java.text.SimpleDateFormat("EEE MM dd HH:mm:ss z yyyy").format(imageDate);
     //imageTime = new Date(displayImage.lastModified()).toString();
     text(imageCaption, 30, height - 38);
     text(imageTime, width - (textWidth(imageTime) + 30), height - 38);
