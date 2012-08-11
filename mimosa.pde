@@ -1,6 +1,5 @@
 import processing.serial.*;
 import JMyron.*;
-FullScreen fs;
 JMyron cam;
 PImage capture;
 
