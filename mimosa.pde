@@ -155,14 +155,14 @@ void capture() {
   }
   lastCapture = roundTime;
   cam.update();
+  arduino.write("OK\n");
   delay(400);
   cam.imageCopy(capture.pixels);
   capture.updatePixels();
   imageTaken = true;
   capture.save(sketchPath("data/capture" + nf((saveCount), 5) + ".jpg"));
-  delay(200);
   saveCount++;
-  arduino.write("OK\n");
+  delay(200);
   capture_running = false;
 }
 
