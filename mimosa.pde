@@ -8,11 +8,11 @@ Serial arduino;
 float displayTime = 2;
 
 int camWidth = 
-  640;
-  //720;
+  //640;
+  720;
 int camHeight = 
-  480;
-  //576;
+  //480;
+  576;
   
 int saveCount = 0;
 int time = 0;
@@ -43,7 +43,7 @@ void setup() {
   loadPixels();
   
   textFont(loadFont("Silom-48.vlw"), 19);
-  thread("prepare_capture");
+  prepare_capture();
   println(Serial.list());
   arduino = new Serial(this, Serial.list()[0], 9600);
 }
