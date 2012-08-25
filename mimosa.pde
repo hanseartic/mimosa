@@ -149,7 +149,10 @@ void capture() {
   
   long roundTime = millis();
   if (roundTime < lastCapture) lastCapture = roundTime;
-  if (roundTime < lastCapture + 3000) return;
+  if (roundTime < lastCapture + 3000) {
+    capture_running = false;
+    return;
+  }
   lastCapture = roundTime;
   cam.update();
   delay(400);
