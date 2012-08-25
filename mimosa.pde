@@ -58,7 +58,7 @@ Date getDayOnlyDate(Date date) {
   cal.set(Calendar.HOUR_OF_DAY, 0);
   cal.set(Calendar.MINUTE, 0);
   cal.set(Calendar.SECOND, 0);
-  cal.set(Calendar.MILLISECOND, 0);  
+  cal.set(Calendar.MILLISECOND, 0);
   return cal.getTime();
 }
 long lastDraw = millis();
@@ -98,10 +98,11 @@ void draw() {
   if (null != displayImage) { 
     image(loadImage(displayImage.getAbsolutePath()), 0, 0, width, height);
     long imageDate = displayImage.lastModified();
+    
     String imageTime = new java.text.SimpleDateFormat("EEE MM dd HH:mm:ss z yyyy").format(imageDate);
     imageDate = getDayOnlyDate(new Date(imageDate)).getTime();
     String imageFromDay = new Integer((int)(imageDate - firstImageTaken) / (1000 * 60 * 60 * 24) + 1).toString();
-    String imageCaption = "Image " + imageIterator + "/" + files.length + " Day " + imageFromDay.toString();
+    String imageCaption = "Image " + (imageIterator + 1) + "/" + files.length + " Day " + imageFromDay.toString();
     //imageTime = new Date(displayImage.lastModified()).toString();
     text(imageCaption, 30, height - 38);
     text(imageTime, width - (textWidth(imageTime) + 30), height - 38);
@@ -110,16 +111,23 @@ void draw() {
 
 void prepare_capture() {
   capturing = true;
-  File dir = new File(sketchPath);
+  File dir = new File(sketchPath("data"));
   if (dir.isDirectory()) {
     String[] fileNames = dir.list(jpgFilter);
     saveCount = fileNames.length;
   }
   println(saveCount);
 }
+
 String serialIn = "";
 boolean imageTaken = false;
+boolean capture_running = false;
+
 void capture() {
+  if (true == capture_running) {
+    return;
+  }
+  capture_running = true;
   boolean releaseShutter = false;
   while(arduino.available() > 0) {
     char in = char(arduino.read());
@@ -133,7 +141,10 @@ void capture() {
       serialIn += in;
     }
   }
-  if (! releaseShutter) return;
+  if (! releaseShutter) {
+    capture_running = false;
+    return;
+  }
   println("RELEASING SHUTTER");
   
   long roundTime = millis();
@@ -141,7 +152,7 @@ void capture() {
   if (roundTime < lastCapture + 3000) return;
   lastCapture = roundTime;
   cam.update();
-  delay(500);
+  delay(400);
   cam.imageCopy(capture.pixels);
   capture.updatePixels();
   imageTaken = true;
@@ -149,5 +160,6 @@ void capture() {
   delay(200);
   saveCount++;
   arduino.write("OK\n");
+  capture_running = false;
 }
 
